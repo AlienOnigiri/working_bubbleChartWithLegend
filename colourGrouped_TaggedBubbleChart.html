@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+		<title>Top 50 Topic Specific Words from Flax</title>
+		<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+</head>
+<body>
+	<script type="text/javascript">  
+        //name of the input file to get values from
+        var filename = "withTags_Flax50TopicSpecific.csv";
+        dataset = {"children": [""]};
+        var tagNames=["city","transport","retail","religion","housing","environment","people"];
+        var tags;
+        var tagsColorScale;
+        // Set the max width that a bubble can be
+        var maxDiameter = 800;
+        var chartHeight = 600;
+        var height = 80;
+        
+        /**
+        **  Extract the data from the csv file and store it in the dataset object's "children" array.
+        **  Here we are also changing the key names that are used in the file, but this is optional.
+        **/
+        d3.csv(filename, function(error, data){
+            dataset.children = data.map(function(d){
+                    return {
+                        Word: d.Word,
+                        Count: d.Frequency,
+                        Tag: d.Tag
+                    };
+            });
+            tags = d3.set(data.map(function(d) { return d.Tag; }));
+            /**tags.each(function(d){
+                    console.log(d);
+            });**/
+            tagsColorScale = d3.scaleOrdinal(d3.schemeCategory10)
+                                .domain(tags.values());
+            // Append an SVG object to the <body> so that we can begin creating visual objects
+            
+            createChart();
+        });
+        
+        /**
+        ** Function to create the chart from the data that has been saved in the 'dataset' object.
+        **/
+        function createChart(svg){
+            
+
+            var svg = d3.select("body")
+                .append("svg")
+                .attr("width", maxDiameter)
+                .attr("height", chartHeight)
+                .attr("class", "bubble");
+            
+            // Employ circle packing to the bubbles in the visualisation with a small padding to keep the bubbles close to the center of the page (like gravity)
+            var bubble = d3.pack(dataset)
+                .size([maxDiameter, chartHeight])
+                .padding(1.5);
+
+            // Compute the hierarchical layout required for the visualisation  (info here: https://github.com/d3/d3-hierarchy)
+            var nodes = d3.hierarchy(dataset)
+                .sum(function(d) { return d.Count; });
+            
+            // Select the .node elements (both existing and not) and join the "children" data to those elements, with one child being represented by a single "g" (group) element.
+            // With svg.selectAll, if an element does not yet exist for any given piece of data then one will be created.
+            var node = svg.selectAll(".node")
+                .data(bubble(nodes).descendants())
+                .enter()
+                .filter(function(d){
+                    return  !d.children
+                })
+                .append("g")
+                .attr("class", "node")
+                .attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
+            
+            // Add the rollover text to the newly created 'bubble' node. e.g. "pedestrian" : 108 mentions
+            node.append("title")
+                .text(function(d) {
+                    return '"'+d.data.Word+'"' + " : " + d.data.Count+" mentions";
+                });
+            
+            // Add the circle element and colour it a random colour from the ordinal scale.
+            node.append("circle")
+                .attr("r", function(d) {
+                    return d.r;
+                })
+                .attr("fill", function(d) {
+                    //console.log(d.data.Tag);
+                    return tagsColorScale(d.data.Tag);
+                });
+            
+            // Add the Word text to the circle element
+            node.append("text")
+                .attr("dy", ".2em")
+                .style("text-anchor", "middle")
+                .text(function(d) {
+                    return d.data.Word.substring(0, d.r / 3);
+                })
+                .attr("font-family", "sans-serif")
+                .attr("font-size", function(d){
+                    return d.r/4;
+                })
+                .attr("fill", "white");  
+
+            // Add the Frequency count text to the circle element
+            node.append("text")
+                .attr("dy", "1.3em")
+                .style("text-anchor", "middle")
+                .text(function(d) {
+                    return d.data.Count;
+                })
+                .attr("font-family", "sans-serif")
+                .attr("font-size", function(d){
+                    return d.r/4;
+                })
+                .attr("fill", "white");
+            
+            // Adjust the height of the frame element in which the visualisation is embedded
+            d3.select(self.frameElement)
+                .style("height", maxDiameter + "px");
+        }
+	</script>
+</body>
+</html>
